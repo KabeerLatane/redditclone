@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package reddit;
+option go_package = "reddit-clone/api/proto/generated";
+
+message UserMessage {
+  string user_id = 1;
+  string username = 2;
+  string password = 3;
+}
+
+message SubredditMessage {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string creator_id = 4;
+}
+
+message PostMessage {
+  string id = 1;
+  string subreddit_id = 2;
+  string author_id = 3;
+  string title = 4;
+  string content = 5;
+  int64 created_at = 6;
+  bool is_repost = 7;
+}
+
+message VoteMessage {
+  string target_id = 1;
+  string user_id = 2;
+  bool is_upvote = 3;
+}
+
+message ErrorResponse {
+  string error = 1;
+}
+
+message SuccessResponse {
+  string message = 1;
+}
+message CommentMessage {
+  string id = 1;
+  string post_id = 2;
+  string parent_id = 3;
+  string author_id = 4;
+  string content = 5;
+  int64 created_at = 6;
+}
+
+message JoinSubredditMessage {
+  string subreddit_id = 1;
+  string user_id = 2;
+}
