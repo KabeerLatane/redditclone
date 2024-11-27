@@ -1,4 +1,4 @@
-// internal/simulation/distribution.go
+// internal/simulation/
 package simulation
 
 import (

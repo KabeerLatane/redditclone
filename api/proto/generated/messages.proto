@@ -52,3 +52,41 @@ message JoinSubredditMessage {
   string subreddit_id = 1;
   string user_id = 2;
 }
+
+message DirectMessageMessage {
+  string id = 1;
+  string from_id = 2;
+  string to_id = 3;
+  string content = 4;
+  int64 timestamp = 5;
+}
+
+
+
+message GetFeedMessage {
+  repeated string subreddit_ids = 1;
+  int32 limit = 2;
+}
+
+message FeedResponse {
+  repeated PostMessage posts = 1;
+}
+
+message GetCommentsMessage {
+  string post_id = 1;
+}
+
+message CommentsResponse {
+  repeated CommentMessage comments = 1;
+}
+message PingMessage {}
+message PongMessage {}
+
+message Action {
+  string type = 1;
+  string userID = 2;
+  string content = 3;
+  int64 timestamp = 4;
+}
+
+message EmptyMessage{}

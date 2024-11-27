@@ -1,4 +1,3 @@
-// internal/simulation/behavior.go
 package simulation
 
 import "math/rand"

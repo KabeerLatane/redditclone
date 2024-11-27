@@ -1,3 +1,4 @@
+// store/memory/store.go
 package memory
 
 import (
@@ -6,11 +7,12 @@ import (
 	"sync"
 )
 
-//goland:noinspection SpellCheckingInspection
 type MemoryStore struct {
 	users      map[string]*models.User
 	subreddits map[string]*models.Subreddit
 	posts      map[string]*models.Post
+	comments   map[string]*models.Comment
+	messages   map[string][]*models.DirectMessage
 	votes      map[string]map[string]bool // targetID -> userID -> upvote/downvote
 	mu         sync.RWMutex
 }
@@ -20,6 +22,8 @@ func NewMemoryStore() *MemoryStore {
 		users:      make(map[string]*models.User),
 		subreddits: make(map[string]*models.Subreddit),
 		posts:      make(map[string]*models.Post),
+		comments:   make(map[string]*models.Comment),
+		messages:   make(map[string][]*models.DirectMessage),
 		votes:      make(map[string]map[string]bool),
 	}
 }
@@ -136,6 +140,55 @@ func (m *MemoryStore) GetSubredditPosts(subredditID string) ([]*models.Post, err
 		}
 	}
 	return posts, nil
+}
+
+// Comment operations
+func (m *MemoryStore) AddComment(comment *models.Comment) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, exists := m.comments[comment.ID]; exists {
+		return errors.New("comment already exists")
+	}
+
+	m.comments[comment.ID] = comment
+	return nil
+}
+
+func (m *MemoryStore) GetComments(postID string) ([]*models.Comment, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var comments []*models.Comment
+	for _, comment := range m.comments {
+		if comment.PostID == postID {
+			comments = append(comments, comment)
+		}
+	}
+	return comments, nil
+}
+
+// Message operations
+func (m *MemoryStore) SendMessage(message *models.DirectMessage) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.messages[message.ToID] == nil {
+		m.messages[message.ToID] = make([]*models.DirectMessage, 0)
+	}
+	m.messages[message.ToID] = append(m.messages[message.ToID], message)
+	return nil
+}
+
+func (m *MemoryStore) GetMessages(userID string) ([]*models.DirectMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	messages, exists := m.messages[userID]
+	if !exists {
+		return make([]*models.DirectMessage, 0), nil
+	}
+	return messages, nil
 }
 
 // Vote operations

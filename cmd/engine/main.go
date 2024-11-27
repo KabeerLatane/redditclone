@@ -1,14 +1,18 @@
-// cmd/engine/main.go
 package main
 
 import (
 	"fmt"
-	protoactor "github.com/asynkron/protoactor-go/actor"
+	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/remote"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
-	"reddit-clone/internal/actor"
+	"os"
+	"os/signal"
+	"syscall"
+
+	//pb "reddit-clone/api/proto/generated"
+	internalActor "reddit-clone/internal/actor" // Alias the import
 	"reddit-clone/internal/store/memory"
 	"reddit-clone/pkg/metrics"
 )
@@ -25,30 +29,54 @@ func main() {
 		}
 	}()
 
-	// Initialize actor system with remote capability
-	system := protoactor.NewActorSystem()
-	remoteConfig := remote.Configure("localhost", 8090)
+	// Initialize actor system
+	system := actor.NewActorSystem()
+
+	// Configure remote
+	remoteConfig := remote.Configure("127.0.0.1", 8090)
+
+	// Create remote
 	remoting := remote.NewRemote(system, remoteConfig)
-	remoting.Start()
 
-	// Initialize store
-	store := memory.NewMemoryStore()
+	// Create new engine actor
+	engineActor := internalActor.NewEngineActor(
+		memory.NewMemoryStore(),
+		metricsCollector,
+	)
 
-	// Create engine actor with metrics
-	engine := actor.NewEngineActor(store, metricsCollector)
-
-	// Spawn the engine actor with a known ID
-	props := protoactor.PropsFromProducer(func() protoactor.Actor {
-		return engine
+	// Create props
+	props := actor.PropsFromProducer(func() actor.Actor {
+		return engineActor
 	})
 
+	remoting.Register("engine", props)
+	remoting.Start()
+
+	// Spawn the engine actor
 	pid, err := system.Root.SpawnNamed(props, "engine")
 	if err != nil {
 		log.Fatalf("Failed to spawn engine actor: %v", err)
 	}
 
 	fmt.Printf("Engine started. PID: %v\n", pid)
+	// Add signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+	// Create shutdown channel
+	done := make(chan bool)
+
+	// Handle shutdown gracefully
+	go func() {
+		sig := <-sigChan
+		log.Printf("Received signal: %v", sig)
+
+		// Cleanup
+		remoting.Shutdown(true)
+		system.Shutdown()
+
+		done <- true
+	}()
 	// Keep the process running
 	select {}
 }
